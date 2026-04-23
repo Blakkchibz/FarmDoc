@@ -4,17 +4,14 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.fragment.app.Fragment
+import com.starforge.farmdoc.R
 
 class AboutFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        val textView = TextView(requireContext())
-        textView.text = "About FarmDoc (Coming Soon)"
-        textView.textSize = 24f
-        return textView
+    ): View? {
+        return inflater.inflate(R.layout.fragment_about, container, false)
     }
 }
