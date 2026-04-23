@@ -22,4 +22,21 @@
         android:name="com.starforge.farmdoc.ui.AboutFragment"
         android:label="About"
         tools:layout="@layout/fragment_about" />
+
+    <fragment
+        android:id="@+id/nav_camera"
+        android:name="com.starforge.farmdoc.ui.CameraFragment"
+        android:label="Take Photo"
+        tools:layout="@layout/fragment_camera" >
+        <action
+            android:id="@+id/action_camera_to_results"
+            app:destination="@id/nav_results" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_results"
+        android:name="com.starforge.farmdoc.ui.ResultsFragment"
+        android:label="Diagnosis Results"
+        tools:layout="@layout/fragment_results" >
+    </fragment>
 </navigation>
