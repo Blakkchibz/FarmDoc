@@ -36,6 +36,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        dataBinding = false
     }
     androidResources {
         noCompress.add("tflite")
