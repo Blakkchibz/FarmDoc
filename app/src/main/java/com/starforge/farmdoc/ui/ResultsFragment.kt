@@ -1,5 +1,6 @@
 package com.starforge.farmdoc.ui
 
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,11 +13,11 @@ import androidx.lifecycle.lifecycleScope
 import com.starforge.farmdoc.R
 import com.starforge.farmdoc.ml.DiseaseClassifier
 import kotlinx.coroutines.launch
+import java.io.InputStream
 
 class ResultsFragment : Fragment() {
 
-    // Instantiate our mock classifier
-    private val classifier = DiseaseClassifier()
+    private lateinit var classifier: DiseaseClassifier
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -27,6 +28,9 @@ class ResultsFragment : Fragment() {
         val tvDisease = view.findViewById<TextView>(R.id.tv_result_disease)
         val tvConfidence = view.findViewById<TextView>(R.id.tv_result_confidence)
 
+        // Initialize the AI classifier using the fragment's context
+        classifier = DiseaseClassifier(requireContext())
+
         arguments?.getString("imageUri")?.let { uriString ->
             val uri = Uri.parse(uriString)
             imgResult.setImageURI(uri)
@@ -35,17 +39,48 @@ class ResultsFragment : Fragment() {
             tvDisease.text = "Analyzing..."
             tvConfidence.text = "Please wait"
 
-            // Run the mock ML classification in a background coroutine
+            // Run the ML classification in a background coroutine
             viewLifecycleOwner.lifecycleScope.launch {
-                // In the real implementation, we would convert the URI to a 224x224 Bitmap here
-                val result = classifier.classifyImage(bitmap = null)
+                try {
+                    // Convert the URI to a Bitmap
+                    val inputStream: InputStream? = requireContext().contentResolver.openInputStream(uri)
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
 
-                // Update the UI with the mock results
-                tvDisease.text = result.diseaseName
-                tvConfidence.text = String.format("Confidence: %.1f%%", result.confidence * 100)
+                    if (bitmap != null) {
+                        // Pass the real bitmap into the TFLite model!
+                        val result = classifier.classifyImage(bitmap)
+
+                        // Save the result to the local Room Database
+                        val scanEntity = com.starforge.farmdoc.db.ScanEntity(
+                            imageUri = uriString,
+                            diseaseName = result.diseaseName,
+                            confidence = result.confidence
+                        )
+                        com.starforge.farmdoc.db.AppDatabase.getDatabase(requireContext())
+                            .scanDao().insertScan(scanEntity)
+
+                        // Update the UI with the final result
+                        tvDisease.text = result.diseaseName
+                        tvConfidence.text = String.format("Confidence: %.1f%%", result.confidence * 100)
+                    } else {
+                        tvDisease.text = "Error"
+                        tvConfidence.text = "Failed to load image"
+                    }
+                } catch (e: Exception) {
+                    tvDisease.text = "Error"
+                    tvConfidence.text = e.localizedMessage
+                }
             }
         }
 
         return view
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Clean up the TFLite interpreter when the view is destroyed
+        if (::classifier.isInitialized) {
+            classifier.close()
+        }
     }
 }
