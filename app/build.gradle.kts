@@ -58,9 +58,13 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
 
-    // TensorFlow Lite for Edge AI
-    implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.support)
+    // TensorFlow Lite for Edge AI (Play Services for latest Op support)
+    implementation(libs.play.services.tflite.java)
+    implementation(libs.tensorflow.lite.support) {
+        exclude(group = "org.tensorflow", module = "tensorflow-lite")
+        exclude(group = "org.tensorflow", module = "tensorflow-lite-api")
+    }
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Room Database for Offline Scan History
     implementation(libs.androidx.room.runtime)

@@ -49,7 +49,10 @@ class HistoryAdapter : RecyclerView.Adapter<HistoryAdapter.HistoryViewHolder>() 
             tvDate.text = sdf.format(Date(scan.timestamp))
 
             try {
-                imgThumbnail.setImageURI(Uri.parse(scan.imageUri))
+                val uri = Uri.parse(scan.imageUri)
+                val inputStream = itemView.context.contentResolver.openInputStream(uri)
+                val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                imgThumbnail.setImageBitmap(bitmap)
             } catch (e: Exception) {
                 // Ignore if URI cannot be resolved or permission lost
             }

@@ -18,6 +18,8 @@ import java.io.InputStream
 class ResultsFragment : Fragment() {
 
     private lateinit var classifier: DiseaseClassifier
+    private var finalDisease: String = "Analyzing..."
+    private var finalConfidence: String = "Please wait"
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -31,19 +33,34 @@ class ResultsFragment : Fragment() {
         // Initialize the AI classifier using the fragment's context
         classifier = DiseaseClassifier(requireContext())
 
-        arguments?.getString("imageUri")?.let { uriString ->
-            val uri = Uri.parse(uriString)
-            imgResult.setImageURI(uri)
+        val uriString = arguments?.getString("imageUri")
+        if (uriString != null) {
+            try {
+                imgResult.setImageURI(Uri.parse(uriString))
+            } catch (e: SecurityException) {
+                // The temporary permission to read this URI from the Gallery has expired
+                e.printStackTrace()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
-            // Set initial analyzing state
-            tvDisease.text = "Analyzing..."
-            tvConfidence.text = "Please wait"
+        if (savedInstanceState != null) {
+            // Restore from backstack (prevents re-running AI and re-logging to database)
+            finalDisease = savedInstanceState.getString("diseaseName", "") ?: ""
+            finalConfidence = savedInstanceState.getString("confidence", "") ?: ""
+            tvDisease.text = finalDisease
+            tvConfidence.text = finalConfidence
+        } else if (uriString != null) {
+            // First time loading: run the AI!
+            tvDisease.text = finalDisease
+            tvConfidence.text = finalConfidence
 
             // Run the ML classification in a background coroutine
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     // Convert the URI to a Bitmap
-                    val inputStream: InputStream? = requireContext().contentResolver.openInputStream(uri)
+                    val inputStream: InputStream? = requireContext().contentResolver.openInputStream(Uri.parse(uriString))
                     val bitmap = BitmapFactory.decodeStream(inputStream)
 
                     if (bitmap != null) {
@@ -59,9 +76,12 @@ class ResultsFragment : Fragment() {
                         com.starforge.farmdoc.db.AppDatabase.getDatabase(requireContext())
                             .scanDao().insertScan(scanEntity)
 
+                        finalDisease = result.diseaseName
+                        finalConfidence = String.format("Confidence: %.1f%%", result.confidence * 100)
+
                         // Update the UI with the final result
-                        tvDisease.text = result.diseaseName
-                        tvConfidence.text = String.format("Confidence: %.1f%%", result.confidence * 100)
+                        tvDisease.text = finalDisease
+                        tvConfidence.text = finalConfidence
                     } else {
                         tvDisease.text = "Error"
                         tvConfidence.text = "Failed to load image"
@@ -74,6 +94,12 @@ class ResultsFragment : Fragment() {
         }
 
         return view
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("diseaseName", finalDisease)
+        outState.putString("confidence", finalConfidence)
     }
 
     override fun onDestroyView() {
